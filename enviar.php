@@ -12,10 +12,12 @@ $stmt->execute([$user_id, $mensaje]);
 $stmt = $conn->prepare("SELECT role, content FROM messages WHERE user_id = ? ORDER BY id ASC LIMIT 10");
 $stmt->execute([$user_id]);
 $mensajes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+ 
 array_unshift($mensajes, [
     "role" => "system",
-    "content" => "Sos un asistente que solo responde preguntas sobre la cátedra de Matemática I. No respondas sobre otros temas."
+    "content" => "Sos un profesor especializado en la cátedra de Matemática I. Solo respondé preguntas relacionadas con ese contenido.
+                  Respondé de forma amable y profesional todas las consultas.
+                  Si el usuario consulta otra cosa, explicá que no podés responder fuera del tema."
 ]);
 
 $ch = curl_init("https://api.openai.com/v1/chat/completions");
@@ -36,10 +38,14 @@ curl_setopt_array($ch, [
 $respuesta = curl_exec($ch);
 curl_close($ch);
 $data = json_decode($respuesta, true);
+
 $texto = $data['choices'][0]['message']['content'] ?? "Error al procesar";
 
 $stmt = $conn->prepare("INSERT INTO messages (user_id, role, content) VALUES (?, 'assistant', ?)");
 $stmt->execute([$user_id, $texto]);
 
 echo $texto;
+file_put_contents("respuesta_debug.json", $respuesta);
+error_log("Respuesta OpenAI: " . $respuesta);
+
 ?>
